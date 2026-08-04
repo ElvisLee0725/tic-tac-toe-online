@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Tic Tac Toe Online{% endblock %}
+{% block content %}
+<h1>Play Tic Tac Toe</h1>
+
+{% if profile %}
+    <p>Welcome back, <strong>{{ profile.display_name }}</strong>
+        (W {{ profile.wins }} / L {{ profile.losses }} / T {{ profile.ties }}).</p>
+{% else %}
+    <p>You're playing as a guest. <a href="/signin">Sign in</a> to save your results.</p>
+{% endif %}
+
+<h2>vs AI</h2>
+<div class="mode-cards">
+    <a class="mode-card" href="/game?mode=ai&difficulty=easy{% if not profile %}&guest=true{% endif %}">
+        <h3>Easy</h3>
+        <p>Casual, mostly random moves. Good for a relaxed game.</p>
+    </a>
+    <div class="mode-card mode-card-disabled">
+        <h3>Medium</h3>
+        <p>Coming soon.</p>
+    </div>
+    <div class="mode-card mode-card-disabled">
+        <h3>Hard</h3>
+        <p>Coming soon.</p>
+    </div>
+</div>
+
+<h2>vs Human (local)</h2>
+<p class="muted">Coming soon.</p>
+{% endblock %}

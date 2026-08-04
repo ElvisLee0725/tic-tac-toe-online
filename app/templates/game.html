@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Game - Tic Tac Toe Online{% endblock %}
+{% block content %}
+<h1>Game</h1>
+<p id="game-status">Setting up...</p>
+<div id="board" class="board" aria-label="Tic tac toe board"></div>
+<p><a href="/">Back to home</a></p>
+
+<script src="/static/js/board.js"></script>
+{% endblock %}
