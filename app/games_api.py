@@ -60,11 +60,11 @@ async def create_game(request: Request):
             {"error": "unsupported_mode", "message": "Only mode='ai' is supported right now."},
             status_code=400,
         )
-    if difficulty != "easy":
+    if difficulty not in ai.SUPPORTED_DIFFICULTIES:
         return JSONResponse(
             {
                 "error": "unsupported_difficulty",
-                "message": "Only difficulty='easy' is supported right now (medium/hard coming soon).",
+                "message": "difficulty must be one of: easy, medium, hard.",
             },
             status_code=400,
         )
@@ -89,7 +89,7 @@ async def create_game(request: Request):
         "x_profile_id": x_profile_id,
         "o_profile_id": None,
         "x_display_name": x_display_name,
-        "o_display_name": "AI (Easy)",
+        "o_display_name": f"AI ({difficulty.capitalize()})",
     }
     active_games[game_id] = g
     return JSONResponse(_game_public_view(g), status_code=201)

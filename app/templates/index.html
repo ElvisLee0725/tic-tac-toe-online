@@ -16,14 +16,14 @@
         <h3>Easy</h3>
         <p>Casual, mostly random moves. Good for a relaxed game.</p>
     </a>
-    <div class="mode-card mode-card-disabled">
+    <a class="mode-card" href="/game?mode=ai&difficulty=medium{% if not profile %}&guest=true{% endif %}">
         <h3>Medium</h3>
-        <p>Coming soon.</p>
-    </div>
-    <div class="mode-card mode-card-disabled">
+        <p>Takes obvious wins/blocks, otherwise plays randomly. Beatable.</p>
+    </a>
+    <a class="mode-card" href="/game?mode=ai&difficulty=hard{% if not profile %}&guest=true{% endif %}">
         <h3>Hard</h3>
-        <p>Coming soon.</p>
-    </div>
+        <p>Unbeatable. Best you can do is tie.</p>
+    </a>
 </div>
 
 <h2>vs Human (local)</h2>
