@@ -100,3 +100,16 @@ form button {
     cursor: pointer;
 }
 .board .cell:disabled { cursor: default; }
+
+.stats-table {
+    border-collapse: collapse;
+    margin-top: 1rem;
+    width: 100%;
+    max-width: 480px;
+}
+.stats-table th, .stats-table td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+.leaderboard-table th { background: rgba(128, 128, 128, 0.1); }

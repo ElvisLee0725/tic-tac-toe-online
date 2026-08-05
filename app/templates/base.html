@@ -10,7 +10,9 @@
     <header class="nav">
         <a class="brand" href="/">Tic Tac Toe Online</a>
         <nav>
+            <a href="/leaderboard">Leaderboard</a>
             {% if profile %}
+                <a href="/profile">My Stats</a>
                 <span class="nav-name">Signed in as <strong>{{ profile.display_name }}</strong></span>
             {% else %}
                 <a href="/signin">Sign in</a>

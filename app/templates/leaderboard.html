@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard - Tic Tac Toe Online{% endblock %}
+{% block content %}
+<h1>Leaderboard</h1>
+<p class="muted">Top 10 by score (wins - losses), minimum 5 completed games to qualify.</p>
+
+{% if top %}
+<table class="stats-table leaderboard-table">
+    <thead>
+        <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Wins</th>
+            <th>Losses</th>
+            <th>Ties</th>
+            <th>Score</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in top %}
+        <tr>
+            <td>{{ row.rank }}</td>
+            <td>{{ row.display_name }}</td>
+            <td>{{ row.wins }}</td>
+            <td>{{ row.losses }}</td>
+            <td>{{ row.ties }}</td>
+            <td>{{ row.score }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No players have qualified for the leaderboard yet (need at least 5 completed games).</p>
+{% endif %}
+
+{% if me %}
+<p class="muted">Your rank: #{{ me.rank }} ({{ me.display_name }} -- W {{ me.wins }} / L {{ me.losses }} / T {{ me.ties }}, score {{ me.score }})</p>
+{% endif %}
+{% endblock %}
