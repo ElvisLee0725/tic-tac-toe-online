@@ -1,10 +1,9 @@
 """
 POST /api/games, POST /api/games/{id}/moves (DESIGN.md Section 4.2).
 
-Scope note (today's slice): only mode="ai", difficulty="easy" is wired
-up end to end. mode="human" and difficulty in {"medium","hard"} are
-rejected with a clear 400 rather than silently accepted -- deferred to
-a later slice, not forgotten.
+Both mode="ai" (Easy/Medium/Hard, server-computed AI reply within the
+move endpoint) and mode="human" (local same-device human-vs-human,
+FR-9/FR-10) are supported.
 
 In-progress game state lives in the in-memory `active_games` dict,
 keyed by a random UUIDv4 game_id, per DESIGN.md Section 1/4 -- this is
@@ -52,14 +51,22 @@ async def create_game(request: Request):
         body = {}
 
     mode = body.get("mode")
+
+    if mode == "ai":
+        return await _create_ai_game(request, body)
+    if mode == "human":
+        return await _create_human_game(request, body)
+
+    return JSONResponse(
+        {"error": "unsupported_mode", "message": "mode must be 'ai' or 'human'."},
+        status_code=400,
+    )
+
+
+async def _create_ai_game(request: Request, body: dict):
     difficulty = body.get("difficulty")
     guest = bool(body.get("guest", False))
 
-    if mode != "ai":
-        return JSONResponse(
-            {"error": "unsupported_mode", "message": "Only mode='ai' is supported right now."},
-            status_code=400,
-        )
     if difficulty not in ai.SUPPORTED_DIFFICULTIES:
         return JSONResponse(
             {
@@ -81,7 +88,7 @@ async def create_game(request: Request):
     game_id = str(uuid.uuid4())
     g = {
         "game_id": game_id,
-        "mode": mode,
+        "mode": "ai",
         "difficulty": difficulty,
         "board": game_rules.new_board(),
         "current_turn": "X",
@@ -95,10 +102,63 @@ async def create_game(request: Request):
     return JSONResponse(_game_public_view(g), status_code=201)
 
 
+async def _create_human_game(request: Request, body: dict):
+    """
+    vs Human (local), FR-9/FR-10. The device owner (X) must already be
+    signed in; the second local player (O) is identified by
+    opponent_name/opponent_pin in the request body, verified with the
+    same create-or-signin logic POST /api/session uses (auth.py) -- this
+    does NOT touch the browser's own session/cookie, X stays signed in
+    throughout.
+    """
+    x_profile = _signed_in_profile(request)
+    if x_profile is None:
+        return JSONResponse({"error": "not_signed_in"}, status_code=401)
+
+    try:
+        opponent_name = auth.validate_display_name(body.get("opponent_name"))
+        opponent_pin = auth.validate_pin(body.get("opponent_pin"))
+    except auth.ValidationError as e:
+        return JSONResponse({"error": "validation_error", "message": str(e)}, status_code=422)
+
+    try:
+        o_profile = auth.create_or_signin(opponent_name, opponent_pin)
+    except auth.WrongPinError:
+        return JSONResponse({"error": "opponent_signin_failed"}, status_code=401)
+
+    if o_profile["id"] == x_profile["id"]:
+        return JSONResponse(
+            {"error": "cannot_play_self", "message": "The second player must be a different profile."},
+            status_code=400,
+        )
+
+    game_id = str(uuid.uuid4())
+    g = {
+        "game_id": game_id,
+        "mode": "human",
+        "difficulty": None,
+        "board": game_rules.new_board(),
+        "current_turn": "X",
+        "status": "in_progress",
+        "x_profile_id": x_profile["id"],
+        "o_profile_id": o_profile["id"],
+        "x_display_name": x_profile["display_name"],
+        "o_display_name": o_profile["display_name"],
+    }
+    active_games[game_id] = g
+    return JSONResponse(_game_public_view(g), status_code=201)
+
+
 def _finalize_if_terminal(g: dict) -> Optional[dict]:
     """If the game just reached a terminal state, write the audit log +
-    increment profile counters (skipped for guest games), and drop the
-    game from active_games. Returns profile_updates dict or None."""
+    increment profile counters for every real participant (skipped
+    entirely for guest games, where x_profile_id is None), and drop the
+    game from active_games. Returns a profile_updates dict or None.
+
+    Handles both mode="ai" (o_profile_id is always None -- the AI has no
+    profile/stats) and mode="human" (o_profile_id is a real profile that
+    must get its own win/loss/tie increment too, per PRD Q8).
+    """
     status = game_rules.game_status(g["board"])
     g["status"] = status
     if status == "in_progress":
@@ -112,14 +172,27 @@ def _finalize_if_terminal(g: dict) -> Optional[dict]:
                VALUES (?, ?, ?, ?, ?)""",
             (g["mode"], g["difficulty"], g["x_profile_id"], g["o_profile_id"], result),
         )
+
+        def _bump(profile_id: int, column: str):
+            db.execute(f"UPDATE profiles SET {column} = {column} + 1 WHERE id = ?", (profile_id,))
+
         if status == "tie":
-            db.execute("UPDATE profiles SET ties = ties + 1 WHERE id = ?", (g["x_profile_id"],))
+            _bump(g["x_profile_id"], "ties")
         elif status == "x_won":
-            db.execute("UPDATE profiles SET wins = wins + 1 WHERE id = ?", (g["x_profile_id"],))
-        else:  # o_won -- AI beat the human (won't happen on Easy in practice, but handled)
-            db.execute("UPDATE profiles SET losses = losses + 1 WHERE id = ?", (g["x_profile_id"],))
-        updated = auth.get_profile_by_id(g["x_profile_id"])
-        profile_updates = {"x": auth.profile_to_dict(updated)}
+            _bump(g["x_profile_id"], "wins")
+        else:  # o_won
+            _bump(g["x_profile_id"], "losses")
+
+        profile_updates = {"x": auth.profile_to_dict(auth.get_profile_by_id(g["x_profile_id"]))}
+
+        if g["o_profile_id"] is not None:
+            if status == "tie":
+                _bump(g["o_profile_id"], "ties")
+            elif status == "o_won":
+                _bump(g["o_profile_id"], "wins")
+            else:  # x_won
+                _bump(g["o_profile_id"], "losses")
+            profile_updates["o"] = auth.profile_to_dict(auth.get_profile_by_id(g["o_profile_id"]))
 
     active_games.pop(g["game_id"], None)
     return profile_updates
@@ -139,23 +212,27 @@ async def make_move(game_id: str, request: Request):
         return JSONResponse({"error": "invalid_json"}, status_code=422)
 
     cell = body.get("cell")
-    if g["current_turn"] != "X":
-        return JSONResponse({"error": "not_your_turn"}, status_code=409)
+    mover_mark = g["current_turn"]
     if not game_rules.is_legal_move(g["board"], cell if isinstance(cell, int) else -1):
         return JSONResponse({"error": "illegal_move"}, status_code=400)
 
-    g["board"] = game_rules.apply_move(g["board"], cell, "X")
+    g["board"] = game_rules.apply_move(g["board"], cell, mover_mark)
     ai_move_info = None
     profile_updates = _finalize_if_terminal(g)
 
     if g["status"] == "in_progress":
-        g["current_turn"] = "O"
-        ai_cell = ai.select_move(g["board"], "O", g["difficulty"])
-        g["board"] = game_rules.apply_move(g["board"], ai_cell, "O")
-        ai_move_info = {"cell": ai_cell}
-        profile_updates = _finalize_if_terminal(g)
-        if g["status"] == "in_progress":
-            g["current_turn"] = "X"
+        g["current_turn"] = game_rules.other_mark(mover_mark)
+
+        if g["mode"] == "ai" and g["current_turn"] == "O":
+            ai_cell = ai.select_move(g["board"], "O", g["difficulty"])
+            g["board"] = game_rules.apply_move(g["board"], ai_cell, "O")
+            ai_move_info = {"cell": ai_cell}
+            profile_updates = _finalize_if_terminal(g)
+            if g["status"] == "in_progress":
+                g["current_turn"] = "X"
+        # mode == "human": no auto-response, it's the other local
+        # player's turn on the same screen -- just leave current_turn
+        # flipped and return.
 
     status = g["status"]
     winner_mark = {"x_won": "X", "o_won": "O"}.get(status)

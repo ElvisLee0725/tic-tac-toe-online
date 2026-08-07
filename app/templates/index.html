@@ -27,5 +27,23 @@
 </div>
 
 <h2>vs Human (local)</h2>
-<p class="muted">Coming soon.</p>
+{% if profile %}
+<p class="muted">Both players take turns on this device. You'll play X; enter your opponent's name + PIN below (a new name creates a profile for them).</p>
+<form id="human-form">
+    <label for="opponent_name">Opponent's display name</label>
+    <input type="text" id="opponent_name" name="opponent_name" maxlength="20"
+           pattern="[A-Za-z0-9_-]{3,20}" required
+           placeholder="3-20 letters/numbers/_/-">
+
+    <label for="opponent_pin">Opponent's PIN (4 digits)</label>
+    <input type="password" id="opponent_pin" name="opponent_pin" maxlength="4" inputmode="numeric"
+           pattern="\d{4}" required placeholder="4 digits">
+
+    <button type="submit">Start local game</button>
+    <p id="human-error" class="error" hidden></p>
+</form>
+<script src="/static/js/human_start.js"></script>
+{% else %}
+<p class="muted"><a href="/signin">Sign in</a> to play vs Human (local) -- both players need a profile.</p>
+{% endif %}
 {% endblock %}

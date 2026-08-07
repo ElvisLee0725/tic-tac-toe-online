@@ -1,7 +1,15 @@
-// fetch()-driven game board. Reads mode/difficulty/guest from the URL
-// query string, creates a game via POST /api/games, then plays it via
-// POST /api/games/{id}/moves. Server is fully authoritative (DESIGN.md
-// Section 4) -- this file only ever sends the human's chosen cell.
+// fetch()-driven game board. Server is fully authoritative (DESIGN.md
+// Section 4) -- this file only ever sends the mover's chosen cell.
+//
+// mode=ai: reads mode/difficulty/guest from the URL query string and
+// creates the game itself via POST /api/games (no secrets involved).
+//
+// mode=human: the game was already created by human_start.js (from the
+// home page, so the opponent's PIN never touches this page/URL); its
+// initial state is handed off via sessionStorage under
+// "ttt_pending_game". Both local players click on the same board in
+// turn -- no auto AI response, no per-request identity check (same
+// device/browser for both, per FR-9).
 (function () {
     const boardEl = document.getElementById("board");
     const statusEl = document.getElementById("game-status");
@@ -15,7 +23,18 @@
     let board = "_________";
     let currentTurn = "X";
     let status = "in_progress";
+    let xName = "X";
+    let oName = "O";
     let busy = false;
+
+    function applyGameState(data) {
+        gameId = data.game_id;
+        board = data.board;
+        currentTurn = data.current_turn;
+        status = data.status;
+        if (data.x) xName = data.x.display_name;
+        if (data.o) oName = data.o.display_name;
+    }
 
     function render() {
         boardEl.innerHTML = "";
@@ -23,7 +42,8 @@
             const btn = document.createElement("button");
             btn.className = "cell";
             btn.textContent = board[i] === "_" ? "" : board[i];
-            const disabled = board[i] !== "_" || status !== "in_progress" || busy || currentTurn !== "X";
+            const notMyTurnYet = mode === "ai" && currentTurn !== "X";
+            const disabled = board[i] !== "_" || status !== "in_progress" || busy || notMyTurnYet;
             btn.disabled = disabled;
             btn.addEventListener("click", () => makeMove(i));
             boardEl.appendChild(btn);
@@ -32,24 +52,38 @@
     }
 
     function renderStatus() {
-        if (status === "in_progress") {
-            statusEl.textContent = currentTurn === "X" ? "Your move (X)" : "AI is thinking...";
-        } else if (status === "x_won") {
-            statusEl.textContent = "You win!";
-        } else if (status === "o_won") {
-            statusEl.textContent = "AI wins.";
-        } else if (status === "tie") {
-            statusEl.textContent = "It's a tie.";
+        statusEl.textContent = "";
+        if (mode === "human") {
+            if (status === "in_progress") {
+                const name = currentTurn === "X" ? xName : oName;
+                statusEl.textContent = `${name}'s turn (${currentTurn})`;
+            } else if (status === "x_won") {
+                statusEl.textContent = `${xName} (X) wins!`;
+            } else if (status === "o_won") {
+                statusEl.textContent = `${oName} (O) wins!`;
+            } else if (status === "tie") {
+                statusEl.textContent = "It's a tie.";
+            }
+        } else {
+            if (status === "in_progress") {
+                statusEl.textContent = currentTurn === "X" ? "Your move (X)" : "AI is thinking...";
+            } else if (status === "x_won") {
+                statusEl.textContent = "You win!";
+            } else if (status === "o_won") {
+                statusEl.textContent = "AI wins.";
+            } else if (status === "tie") {
+                statusEl.textContent = "It's a tie.";
+            }
         }
         if (status !== "in_progress") {
             const again = document.createElement("a");
-            again.href = window.location.pathname + window.location.search;
-            again.textContent = " New game";
+            again.href = mode === "human" ? "/" : window.location.pathname + window.location.search;
+            again.textContent = mode === "human" ? " Back to home to start another game" : " New game";
             statusEl.appendChild(again);
         }
     }
 
-    async function startGame() {
+    async function startAiGame() {
         statusEl.textContent = "Starting game...";
         const res = await fetch("/api/games", {
             method: "POST",
@@ -61,15 +95,27 @@
             statusEl.textContent = "Could not start game: " + (data.message || data.error);
             return;
         }
-        gameId = data.game_id;
-        board = data.board;
-        currentTurn = data.current_turn;
-        status = data.status;
+        applyGameState(data);
+        render();
+    }
+
+    function startHumanGame() {
+        const raw = sessionStorage.getItem("ttt_pending_game");
+        if (!raw) {
+            statusEl.textContent = "No game in progress. Start a new local game from the home page.";
+            const link = document.createElement("a");
+            link.href = "/";
+            link.textContent = " Go home";
+            statusEl.appendChild(link);
+            return;
+        }
+        sessionStorage.removeItem("ttt_pending_game");
+        applyGameState(JSON.parse(raw));
         render();
     }
 
     async function makeMove(cell) {
-        if (busy || status !== "in_progress" || currentTurn !== "X" || board[cell] !== "_") return;
+        if (busy || status !== "in_progress" || board[cell] !== "_") return;
         busy = true;
         render();
         try {
@@ -94,5 +140,9 @@
         }
     }
 
-    startGame();
+    if (mode === "human") {
+        startHumanGame();
+    } else {
+        startAiGame();
+    }
 })();
