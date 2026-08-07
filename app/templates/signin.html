@@ -1,25 +1,48 @@
 {% extends "base.html" %}
 {% block title %}Sign in - Tic Tac Toe Online{% endblock %}
 {% block content %}
-<h1>Sign in / Create profile</h1>
-<p class="muted">
-    New name? We'll create a profile for you. Existing name? Enter the matching PIN to sign back in.
-    Remember your PIN -- there's no recovery if you forget it.
-</p>
+<h1>Sign in / Create account</h1>
 
-<form id="signin-form">
-    <label for="display_name">Display name</label>
-    <input type="text" id="display_name" name="display_name" maxlength="20"
-           pattern="[A-Za-z0-9_-]{3,20}" required
-           placeholder="3-20 letters/numbers/_/-">
+<div class="tabs" role="tablist">
+    <button type="button" id="tab-signin" class="tab-btn active" role="tab" aria-selected="true">Sign In</button>
+    <button type="button" id="tab-create" class="tab-btn" role="tab" aria-selected="false">Create Account</button>
+</div>
 
-    <label for="pin">PIN (4 digits)</label>
-    <input type="password" id="pin" name="pin" maxlength="4" inputmode="numeric"
-           pattern="\d{4}" required placeholder="4 digits">
+<section id="panel-signin">
+    <p class="muted">Enter your existing display name and PIN.</p>
+    <form id="signin-form">
+        <label for="signin_display_name">Display name</label>
+        <input type="text" id="signin_display_name" name="display_name" maxlength="20"
+               pattern="[A-Za-z0-9_-]{3,20}" required
+               placeholder="3-20 letters/numbers/_/-">
 
-    <button type="submit">Continue</button>
-    <p id="signin-error" class="error" hidden></p>
-</form>
+        <label for="signin_pin">PIN (4 digits)</label>
+        <input type="password" id="signin_pin" name="pin" maxlength="4" inputmode="numeric"
+               pattern="\d{4}" required placeholder="4 digits">
+
+        <button type="submit">Sign In</button>
+        <p id="signin-error" class="error" hidden></p>
+    </form>
+</section>
+
+<section id="panel-create" hidden>
+    <p class="muted">
+        Pick a new display name and PIN. Remember your PIN -- there's no recovery if you forget it.
+    </p>
+    <form id="create-form">
+        <label for="create_display_name">Display name</label>
+        <input type="text" id="create_display_name" name="display_name" maxlength="20"
+               pattern="[A-Za-z0-9_-]{3,20}" required
+               placeholder="3-20 letters/numbers/_/-">
+
+        <label for="create_pin">PIN (4 digits)</label>
+        <input type="password" id="create_pin" name="pin" maxlength="4" inputmode="numeric"
+               pattern="\d{4}" required placeholder="4 digits">
+
+        <button type="submit">Create Account</button>
+        <p id="create-error" class="error" hidden></p>
+    </form>
+</section>
 
 <script src="/static/js/signin.js"></script>
 {% endblock %}

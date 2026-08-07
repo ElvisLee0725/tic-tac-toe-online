@@ -40,7 +40,7 @@
 
     function describeError(data) {
         if (data.error === "opponent_signin_failed") {
-            return "That name is taken -- ask your opponent for the correct PIN.";
+            return "That username and PIN aren't recognized -- your opponent needs an existing account.";
         }
         if (data.error === "cannot_play_self") {
             return "Enter a different player as your opponent.";

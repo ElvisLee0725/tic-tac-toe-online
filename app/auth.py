@@ -21,8 +21,15 @@ class ValidationError(Exception):
     """Raised for malformed name/PIN input (FR-21) -> maps to 422."""
 
 
-class WrongPinError(Exception):
-    """Raised when an existing name is used with an incorrect PIN (FR-20) -> maps to 401."""
+class NameTakenError(Exception):
+    """Raised by create_profile_explicit() when the display name already
+    exists (FR-18) -> maps to 409. Nothing is created or modified."""
+
+
+class SignInFailedError(Exception):
+    """Raised by sign_in() when the name doesn't exist OR exists with the
+    wrong PIN (FR-19) -> maps to 401. Deliberately a single error type for
+    both cases so the response can't be used to probe which names exist."""
 
 
 def validate_display_name(name: str) -> str:
@@ -83,22 +90,34 @@ def create_profile(display_name: str, pin: str) -> dict:
     return get_profile_by_id(cur.lastrowid)
 
 
-def create_or_signin(display_name: str, pin: str) -> dict:
+def create_profile_explicit(display_name: str, pin: str) -> dict:
     """
-    Combined create-or-signin logic (FR-18/19/20), shared by POST /api/session
-    and (later) the vs-Human opponent sign-in flow.
+    "Create Account" (FR-18), a genuinely separate action from signing in
+    (2026-08-06 revision -- see PRD FR-18). Succeeds only if the name
+    doesn't already exist; otherwise raises NameTakenError and creates
+    nothing.
+    """
+    existing = get_profile_by_name(display_name)
+    if existing is not None:
+        raise NameTakenError()
+    return create_profile(display_name, pin)
 
-    - Name doesn't exist -> create a new profile.
-    - Name exists, PIN matches -> return that profile.
-    - Name exists, PIN doesn't match -> raise WrongPinError.
+
+def sign_in(display_name: str, pin: str) -> dict:
+    """
+    "Sign In" (FR-19, 2026-08-06 revision). Succeeds only if the name
+    exists AND the PIN matches. If the name doesn't exist, or exists with
+    the wrong PIN, raises the same SignInFailedError either way -- no
+    account is ever created here, and the failure never reveals which
+    case it was.
     """
     existing = get_profile_by_name(display_name)
     if existing is None:
-        return create_profile(display_name, pin)
+        raise SignInFailedError()
 
     expected = hash_pin(pin, existing["pin_salt"])
     if not secrets.compare_digest(expected, existing["pin_hash"]):
-        raise WrongPinError()
+        raise SignInFailedError()
     return existing
 
 

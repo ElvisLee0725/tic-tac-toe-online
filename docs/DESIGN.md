@@ -171,11 +171,16 @@ Remaining attack surface, and how it's handled (kept deliberately lightweight �
 
 ### 4.1 Session / Profile endpoints (FR-18–FR-24)
 
+**Revised 2026-08-06** (see PRD FR-18/FR-19, revised same date): "Create Account" and "Sign In" are two separate endpoints/actions, not one combined create-or-signin form. The earlier combined design meant a typo'd/unrecognized name silently created a throwaway account instead of erroring — confirmed as unwanted behavior in stakeholder testing. Sign-in failures are also now a single generic error regardless of whether the name doesn't exist or the PIN is wrong, so the response can never be used to probe which display names are taken.
+
 | Method & Path | Request body | Response | Notes |
 |---|---|---|---|
-| `POST /api/session` | `{ "display_name": str, "pin": str }` | `200 { profile: {id, display_name, wins, losses, ties, created_at} }` and sets `session_token` cookie | Combined create-or-signin (FR-18/19). New name → creates profile. Existing name + correct PIN → signs in. Existing name + wrong PIN → `401 { error: "wrong_pin" }` (FR-20), no row modified. Malformed name/PIN (Section "Identity format", carried over from PRD Q4) → `422` before touching the DB (FR-21). |
+| `POST /api/session/new` | `{ "display_name": str, "pin": str }` | `201 { profile: {id, display_name, wins, losses, ties, created_at} }` and sets `session_token` cookie | **Create Account** (FR-18). Succeeds only if the name doesn't already exist. Name already taken → `409 { error: "name_taken" }`, no row modified, caller is NOT signed into the existing account. Malformed name/PIN → `422` before touching the DB (FR-21). |
+| `POST /api/session` | `{ "display_name": str, "pin": str }` | `200 { profile: {...} }` and sets `session_token` cookie | **Sign In** (FR-19). Succeeds only if the name exists AND the PIN matches. Name not found, or found with wrong PIN → identical `401 { error: "sign_in_failed" }` either way, no row created or modified. Malformed name/PIN → `422`. |
 | `GET /api/session` | — (reads cookie) | `200 { profile: {...} }` or `401 { error: "not_signed_in" }` | Auto-recognition (FR-22/35) and "my stats" (FR-25) in one call — the profile object already includes wins/losses/ties, so no separate `/me` endpoint is needed. |
 | `DELETE /api/session` | — | `204`, clears cookie | Sign out / switch profile (FR-23). Deletes the `sessions` row so the old token can't be replayed. |
+
+The vs-Human opponent flow (`POST /api/games`, `mode: "human"`, Section 4.2) identifies player O via the same **sign-in-only** logic as `POST /api/session` (`auth.sign_in()`) — O must already have an existing account; a second local player is deliberately not silently registered without a moment where they intentionally create their own profile. Failure (name not found or wrong PIN, indistinguishable) → `401 { error: "opponent_signin_failed" }`, no game created.
 
 ### 4.2 Game endpoints
 
@@ -189,7 +194,7 @@ Remaining attack surface, and how it's handled (kept deliberately lightweight �
 - **Human always plays X and moves first** (FR-1); in `vs AI` the AI is always O; in `vs Human (local)` the browser's signed-in profile (from the session cookie) is X, and the second local player is O.
 - `mode: "ai", guest: true` — no cookie required (FR-17). Server creates an in-memory session with `x_profile_id = null`; on completion nothing is written to the DB.
 - `mode: "ai", guest: false` — requires a valid session cookie (else `401`); `x` = signed-in profile, `o` = AI (`o_profile_id = null` in the eventual `game_results` row).
-- `mode: "human"` — requires a valid session cookie for X **and** `opponent_name`/`opponent_pin` in the body for O, checked with the same verification used by `POST /api/session` (FR-19/20 logic, reused — but this does **not** switch the browser's own cookie/session, since the device owner stays signed in as X). Wrong PIN → `401 { error: "opponent_signin_failed" }`, no game created. This is how FR-10 ("both participants must be signed in") is satisfied without a second device.
+- `mode: "human"` — requires a valid session cookie for X **and** `opponent_name`/`opponent_pin` in the body for O, checked with `auth.sign_in()` (the same sign-in-only logic `POST /api/session` uses, see Section 4.1 — O must already have an account; this does **not** switch the browser's own cookie/session, since the device owner stays signed in as X). Name not found or wrong PIN (indistinguishable) → `401 { error: "opponent_signin_failed" }`, no game created. This is how FR-10 ("both participants must be signed in") is satisfied without a second device.
 
 `POST /api/games/{game_id}/moves` flow (this is where AI turns are handled — no separate "get AI move" endpoint exists):
 1. Look up the game in the in-memory `active_games` dict; `404` if unknown/expired, `409` if already finished.

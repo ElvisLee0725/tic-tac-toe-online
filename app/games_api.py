@@ -106,9 +106,13 @@ async def _create_human_game(request: Request, body: dict):
     """
     vs Human (local), FR-9/FR-10. The device owner (X) must already be
     signed in; the second local player (O) is identified by
-    opponent_name/opponent_pin in the request body, verified with the
-    same create-or-signin logic POST /api/session uses (auth.py) -- this
-    does NOT touch the browser's own session/cookie, X stays signed in
+    opponent_name/opponent_pin in the request body, verified with
+    auth.sign_in() -- the same sign-in-only logic POST /api/session uses
+    (2026-08-06 revision). O must already have an existing account; this
+    deliberately does NOT silently create one for them (a second local
+    player shouldn't be auto-registered without a moment where they
+    intentionally set up their own profile -- see FR-18/19). This does
+    NOT touch the browser's own session/cookie, X stays signed in
     throughout.
     """
     x_profile = _signed_in_profile(request)
@@ -122,8 +126,8 @@ async def _create_human_game(request: Request, body: dict):
         return JSONResponse({"error": "validation_error", "message": str(e)}, status_code=422)
 
     try:
-        o_profile = auth.create_or_signin(opponent_name, opponent_pin)
-    except auth.WrongPinError:
+        o_profile = auth.sign_in(opponent_name, opponent_pin)
+    except auth.SignInFailedError:
         return JSONResponse({"error": "opponent_signin_failed"}, status_code=401)
 
     if o_profile["id"] == x_profile["id"]:

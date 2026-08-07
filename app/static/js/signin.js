@@ -1,43 +1,72 @@
-// Small helper for the sign-in / create-profile form.
-// Posts to /api/session; on success the server sets the session cookie
-// and we redirect home. On failure, shows the server's error message.
+// Sign In / Create Account -- two genuinely separate actions (2026-08-06
+// revision) hitting two different endpoints, not one combined form.
 (function () {
-    const form = document.getElementById("signin-form");
-    const errorEl = document.getElementById("signin-error");
+    const tabSignin = document.getElementById("tab-signin");
+    const tabCreate = document.getElementById("tab-create");
+    const panelSignin = document.getElementById("panel-signin");
+    const panelCreate = document.getElementById("panel-create");
 
-    form.addEventListener("submit", async function (evt) {
-        evt.preventDefault();
-        errorEl.hidden = true;
+    function showTab(which) {
+        const signinActive = which === "signin";
+        panelSignin.hidden = !signinActive;
+        panelCreate.hidden = signinActive;
+        tabSignin.classList.toggle("active", signinActive);
+        tabCreate.classList.toggle("active", !signinActive);
+        tabSignin.setAttribute("aria-selected", String(signinActive));
+        tabCreate.setAttribute("aria-selected", String(!signinActive));
+    }
 
-        const display_name = document.getElementById("display_name").value.trim();
-        const pin = document.getElementById("pin").value.trim();
+    tabSignin.addEventListener("click", () => showTab("signin"));
+    tabCreate.addEventListener("click", () => showTab("create"));
 
-        try {
-            const res = await fetch("/api/session", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ display_name, pin }),
-            });
-            const data = await res.json();
-            if (res.ok) {
-                window.location.href = "/";
-                return;
+    async function submitForm(path, formId, errorId, describeError) {
+        const form = document.getElementById(formId);
+        const errorEl = document.getElementById(errorId);
+
+        form.addEventListener("submit", async function (evt) {
+            evt.preventDefault();
+            errorEl.hidden = true;
+
+            const display_name = form.querySelector("[name=display_name]").value.trim();
+            const pin = form.querySelector("[name=pin]").value.trim();
+
+            try {
+                const res = await fetch(path, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ display_name, pin }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    window.location.href = "/";
+                    return;
+                }
+                errorEl.textContent = describeError(data);
+                errorEl.hidden = false;
+            } catch (err) {
+                errorEl.textContent = "Something went wrong. Please try again.";
+                errorEl.hidden = false;
             }
-            errorEl.textContent = describeError(data);
-            errorEl.hidden = false;
-        } catch (err) {
-            errorEl.textContent = "Something went wrong. Please try again.";
-            errorEl.hidden = false;
-        }
-    });
+        });
+    }
 
-    function describeError(data) {
-        if (data.error === "wrong_pin") {
-            return "That name is taken -- enter the correct PIN or choose another name.";
+    submitForm("/api/session", "signin-form", "signin-error", function (data) {
+        if (data.error === "sign_in_failed") {
+            return "That username and PIN aren't recognized.";
         }
         if (data.error === "validation_error") {
             return data.message || "Please check your name and PIN.";
         }
         return data.message || "Sign-in failed.";
-    }
+    });
+
+    submitForm("/api/session/new", "create-form", "create-error", function (data) {
+        if (data.error === "name_taken") {
+            return "That name is already taken -- sign in instead or choose another name.";
+        }
+        if (data.error === "validation_error") {
+            return data.message || "Please check your name and PIN.";
+        }
+        return data.message || "Could not create account.";
+    });
 })();
