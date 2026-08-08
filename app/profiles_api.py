@@ -23,6 +23,7 @@ def _set_session_cookie(resp: JSONResponse, profile_id: int) -> JSONResponse:
         value=token,
         httponly=True,
         samesite="lax",
+        secure=True,
         max_age=auth.COOKIE_MAX_AGE,
         path="/",
     )

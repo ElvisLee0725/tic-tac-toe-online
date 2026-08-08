@@ -32,9 +32,11 @@ class SignInFailedError(Exception):
     both cases so the response can't be used to probe which names exist."""
 
 
-def validate_display_name(name: str) -> str:
+def validate_display_name(name) -> str:
     if name is None:
         raise ValidationError("display_name is required")
+    if not isinstance(name, str):
+        raise ValidationError("display_name must be a string")
     name = name.strip()
     if not name:
         raise ValidationError("display_name cannot be empty")
@@ -45,9 +47,11 @@ def validate_display_name(name: str) -> str:
     return name
 
 
-def validate_pin(pin: str) -> str:
+def validate_pin(pin) -> str:
     if pin is None:
         raise ValidationError("pin is required")
+    if not isinstance(pin, str):
+        raise ValidationError("pin must be a string")
     pin = pin.strip()
     if not PIN_RE.match(pin):
         raise ValidationError("pin must be exactly 4 digits")

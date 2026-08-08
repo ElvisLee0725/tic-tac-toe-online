@@ -65,9 +65,9 @@ async def create_game(request: Request):
 
 async def _create_ai_game(request: Request, body: dict):
     difficulty = body.get("difficulty")
-    guest = bool(body.get("guest", False))
+    guest_requested = bool(body.get("guest", False))
 
-    if difficulty not in ai.SUPPORTED_DIFFICULTIES:
+    if not isinstance(difficulty, str) or difficulty not in ai.SUPPORTED_DIFFICULTIES:
         return JSONResponse(
             {
                 "error": "unsupported_difficulty",
@@ -76,14 +76,19 @@ async def _create_ai_game(request: Request, body: dict):
             status_code=400,
         )
 
+    # Guest-ness is determined server-side, never trusted from the client
+    # alone: a valid session cookie always wins over a client-supplied
+    # guest:true, so a signed-in player can't dodge stat recording by
+    # just adding guest:true to the request body (QA Finding #3). Only
+    # when there's genuinely no valid session is guest:true honored.
     x_profile_id = None
     x_display_name = "Guest"
-    if not guest:
-        profile = _signed_in_profile(request)
-        if profile is None:
-            return JSONResponse({"error": "not_signed_in"}, status_code=401)
+    profile = _signed_in_profile(request)
+    if profile is not None:
         x_profile_id = profile["id"]
         x_display_name = profile["display_name"]
+    elif not guest_requested:
+        return JSONResponse({"error": "not_signed_in"}, status_code=401)
 
     game_id = str(uuid.uuid4())
     g = {
@@ -198,7 +203,13 @@ def _finalize_if_terminal(g: dict) -> Optional[dict]:
                 _bump(g["o_profile_id"], "losses")
             profile_updates["o"] = auth.profile_to_dict(auth.get_profile_by_id(g["o_profile_id"]))
 
-    active_games.pop(g["game_id"], None)
+    # Note: the finished game is deliberately left in active_games (not
+    # popped) so the "already finished" check in make_move() below can
+    # actually return 409 game_already_finished instead of 404 not_found
+    # (QA Finding #2). This is consistent with Finding #6 (accepted,
+    # informational-only): active_games already grows unbounded for
+    # abandoned in-progress games, so leaving finished games in place too
+    # doesn't introduce a new class of problem.
     return profile_updates
 
 
@@ -217,7 +228,8 @@ async def make_move(game_id: str, request: Request):
 
     cell = body.get("cell")
     mover_mark = g["current_turn"]
-    if not game_rules.is_legal_move(g["board"], cell if isinstance(cell, int) else -1):
+    cell_is_valid_int = isinstance(cell, int) and not isinstance(cell, bool)
+    if not game_rules.is_legal_move(g["board"], cell if cell_is_valid_int else -1):
         return JSONResponse({"error": "illegal_move"}, status_code=400)
 
     g["board"] = game_rules.apply_move(g["board"], cell, mover_mark)

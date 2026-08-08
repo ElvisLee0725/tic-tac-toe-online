@@ -57,7 +57,10 @@ def legal_moves(board: List[str]) -> List[int]:
 
 
 def is_legal_move(board: List[str], cell: int) -> bool:
-    if not isinstance(cell, int) or cell < 0 or cell > 8:
+    # bool is a subclass of int in Python (isinstance(True, int) is True),
+    # so explicitly exclude it -- {"cell": true} must not be treated as
+    # cell index 1 (QA Finding #4).
+    if isinstance(cell, bool) or not isinstance(cell, int) or cell < 0 or cell > 8:
         return False
     return board[cell] == EMPTY
 
