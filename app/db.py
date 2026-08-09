@@ -77,6 +77,39 @@ SCHEMA_STATEMENTS = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_pin_resets_profile ON pin_resets(profile_id)",
+    # v2: cross-device challenge/invite flow (DESIGN_V2.md Section 2.2).
+    # Deviation from the design doc's literal schema, found during
+    # implementation: `game_id INTEGER REFERENCES live_games(id)` as
+    # written fails at INSERT time (not just CREATE TABLE time) against
+    # this libsql client, with "no such table: main.live_games" -- unlike
+    # stdlib sqlite3, this driver appears to validate a REFERENCES
+    # target's existence when preparing DML against the table, not only
+    # when FK enforcement is actually triggered. Since live_games doesn't
+    # exist until the next increment (Section 2.3), game_id is a plain
+    # INTEGER column for now (still nullable, still holds a live_games id
+    # once that exists). NEXT INCREMENT: once live_games is created, add
+    # the REFERENCES live_games(id) constraint back (e.g. via a guarded
+    # ALTER/rebuild, same pattern as _ensure_recovery_email_column) --
+    # not required for correctness (SQLite doesn't enforce FKs unless
+    # PRAGMA foreign_keys=ON, which this app never sets), but worth
+    # restoring for documentation/tooling value.
+    """
+    CREATE TABLE IF NOT EXISTS challenges (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        challenger_id  INTEGER NOT NULL REFERENCES profiles(id),
+        invitee_id     INTEGER NOT NULL REFERENCES profiles(id),
+        status         TEXT NOT NULL DEFAULT 'pending'
+                         CHECK (status IN ('pending','accepted','declined','cancelled','expired')),
+        created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        expires_at     TEXT NOT NULL,
+        game_id        INTEGER
+    )
+    """,
+    # FR-49: at most one *pending* outgoing challenge per (challenger, invitee) pair.
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_challenges_pending_pair
+        ON challenges(challenger_id, invitee_id) WHERE status = 'pending'
+    """,
 ]
 
 

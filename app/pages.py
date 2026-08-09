@@ -74,6 +74,18 @@ async def forgot_pin_page(request: Request):
     )
 
 
+@router.get("/challenges")
+async def challenges_page(request: Request):
+    """Incoming/outgoing pending challenges (FR-44-49, DESIGN_V2.md
+    Section 2.2.1). Also feeds the nav badge (challenges.js)."""
+    profile = _current_profile(request)
+    if profile is None:
+        return RedirectResponse(url="/signin", status_code=302)
+    return templates.TemplateResponse(
+        request, "challenges.html", {"profile": profile}
+    )
+
+
 @router.get("/reset-pin")
 async def reset_pin_page(request: Request):
     """

@@ -13,6 +13,7 @@
             <a href="/leaderboard">Leaderboard</a>
             {% if profile %}
                 <a href="/profile">My Stats</a>
+                <a href="/challenges">Challenges <span id="challenge-badge" class="badge" hidden>0</span></a>
                 <span class="nav-name">Signed in as <strong>{{ profile.display_name }}</strong></span>
                 <button type="button" id="sign-out-btn" class="nav-btn-link">Sign out</button>
             {% else %}
@@ -24,5 +25,8 @@
         {% block content %}{% endblock %}
     </main>
     <script src="/static/js/nav.js"></script>
+    {% if profile %}
+    <script src="/static/js/challenges.js"></script>
+    {% endif %}
 </body>
 </html>

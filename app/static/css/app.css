@@ -144,3 +144,31 @@ form button {
     font: inherit;
     text-decoration: underline;
 }
+
+.badge {
+    display: inline-block;
+    min-width: 1.1em;
+    padding: 0 0.35em;
+    margin-left: 0.25em;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.75rem;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.challenge-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 1.5rem;
+}
+.challenge-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.challenge-action { margin-left: 0.75rem; }

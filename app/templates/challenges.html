@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Challenges - Tic Tac Toe Online{% endblock %}
+{% block content %}
+<h1>Challenges</h1>
+<p class="muted">
+    Invite another player by their exact display name. They'll need to accept before a game starts.
+    (Playing the actual cross-device game isn't wired up yet -- accepting just confirms the challenge for now.)
+</p>
+
+<form id="send-challenge-form">
+    <label for="invitee_name">Challenge someone by name</label>
+    <input type="text" id="invitee_name" name="invitee_name" maxlength="20" required
+           placeholder="Their display name">
+    <button type="submit">Send challenge</button>
+    <p id="send-challenge-error" class="error" hidden></p>
+</form>
+
+<h2>Incoming</h2>
+<ul id="incoming-list" class="challenge-list">
+    <li class="muted">Loading...</li>
+</ul>
+
+<h2>Outgoing</h2>
+<ul id="outgoing-list" class="challenge-list">
+    <li class="muted">Loading...</li>
+</ul>
+{% endblock %}
