@@ -8,7 +8,16 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app import challenges_api, db, games_api, leaderboard_api, pages, pin_recovery_api, profiles_api
+from app import (
+    challenges_api,
+    db,
+    games_api,
+    leaderboard_api,
+    live_games_api,
+    pages,
+    pin_recovery_api,
+    profiles_api,
+)
 
 APP_DIR = Path(__file__).resolve().parent
 
@@ -21,6 +30,7 @@ app.include_router(games_api.router)
 app.include_router(leaderboard_api.router)
 app.include_router(pin_recovery_api.router)
 app.include_router(challenges_api.router)
+app.include_router(live_games_api.router)
 app.include_router(pages.router)
 
 

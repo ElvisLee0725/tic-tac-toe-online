@@ -77,22 +77,44 @@ SCHEMA_STATEMENTS = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_pin_resets_profile ON pin_resets(profile_id)",
+    # v2: cross-device live games (DESIGN_V2.md Section 2.3), DB-backed
+    # (unlike v1's in-memory active_games) because cross-device games can
+    # sit idle for many minutes between moves and must survive reload
+    # (FR-60) and Render idle spin-downs. Created before `challenges`
+    # below so challenges.game_id's REFERENCES live_games(id) resolves
+    # (see note there).
+    """
+    CREATE TABLE IF NOT EXISTS live_games (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        x_profile_id    INTEGER NOT NULL REFERENCES profiles(id),
+        o_profile_id    INTEGER NOT NULL REFERENCES profiles(id),
+        board           TEXT NOT NULL DEFAULT '_________',
+        current_turn    TEXT NOT NULL DEFAULT 'X' CHECK (current_turn IN ('X','O')),
+        status          TEXT NOT NULL DEFAULT 'in_progress'
+                          CHECK (status IN ('in_progress','x_won','o_won','tie','forfeited_x','forfeited_o')),
+        x_last_seen_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        o_last_seen_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        ended_at        TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_live_games_x ON live_games(x_profile_id)",
+    "CREATE INDEX IF NOT EXISTS idx_live_games_o ON live_games(o_profile_id)",
     # v2: cross-device challenge/invite flow (DESIGN_V2.md Section 2.2).
-    # Deviation from the design doc's literal schema, found during
-    # implementation: `game_id INTEGER REFERENCES live_games(id)` as
-    # written fails at INSERT time (not just CREATE TABLE time) against
-    # this libsql client, with "no such table: main.live_games" -- unlike
-    # stdlib sqlite3, this driver appears to validate a REFERENCES
-    # target's existence when preparing DML against the table, not only
-    # when FK enforcement is actually triggered. Since live_games doesn't
-    # exist until the next increment (Section 2.3), game_id is a plain
-    # INTEGER column for now (still nullable, still holds a live_games id
-    # once that exists). NEXT INCREMENT: once live_games is created, add
-    # the REFERENCES live_games(id) constraint back (e.g. via a guarded
-    # ALTER/rebuild, same pattern as _ensure_recovery_email_column) --
-    # not required for correctness (SQLite doesn't enforce FKs unless
-    # PRAGMA foreign_keys=ON, which this app never sets), but worth
-    # restoring for documentation/tooling value.
+    # `game_id REFERENCES live_games(id)` is restored now that live_games
+    # exists (previous increment had to drop it -- this libsql client
+    # validates a REFERENCES target's existence at INSERT-prepare time,
+    # not just CREATE-TABLE time, and live_games didn't exist yet then).
+    # Verified working against a fresh DB with both tables created in the
+    # same init_db() run. NOTE: this only affects *new* databases -- an
+    # existing challenges table (from before this increment, e.g. a
+    # local.db or the deployed Turso DB created during the previous
+    # increment) keeps its old unconstrained `game_id INTEGER` column,
+    # since CREATE TABLE IF NOT EXISTS never alters an existing table and
+    # SQLite can't ALTER a column to add a REFERENCES constraint in
+    # place. This is cosmetic/documentation-only either way -- the app
+    # never sets PRAGMA foreign_keys=ON, so nothing was ever actually
+    # enforcing this constraint at runtime.
     """
     CREATE TABLE IF NOT EXISTS challenges (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,7 +124,7 @@ SCHEMA_STATEMENTS = [
                          CHECK (status IN ('pending','accepted','declined','cancelled','expired')),
         created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
         expires_at     TEXT NOT NULL,
-        game_id        INTEGER
+        game_id        INTEGER REFERENCES live_games(id)
     )
     """,
     # FR-49: at most one *pending* outgoing challenge per (challenger, invitee) pair.

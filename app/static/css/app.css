@@ -100,6 +100,11 @@ form button {
     cursor: pointer;
 }
 .board .cell:disabled { cursor: default; }
+.board .cell-win {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
 
 .stats-table {
     border-collapse: collapse;

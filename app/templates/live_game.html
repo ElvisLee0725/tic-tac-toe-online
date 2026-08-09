@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Live Game - Tic Tac Toe Online{% endblock %}
+{% block content %}
+<h1>Live Game</h1>
+<p class="muted">{{ x_name }} (X) vs {{ o_name }} (O)</p>
+<p id="game-status">Loading...</p>
+<div id="board" class="board" aria-label="Tic tac toe board"></div>
+<p><a href="/challenges">Back to Challenges</a></p>
+
+<script src="/static/js/board-render.js"></script>
+<script>
+    window.TTT_LIVE_GAME = {
+        gameId: {{ game_id }},
+        myMark: "{{ my_mark }}",
+        xName: {{ x_name | tojson }},
+        oName: {{ o_name | tojson }}
+    };
+</script>
+<script src="/static/js/live-board.js"></script>
+{% endblock %}

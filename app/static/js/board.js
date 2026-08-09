@@ -37,17 +37,13 @@
     }
 
     function render() {
-        boardEl.innerHTML = "";
-        for (let i = 0; i < 9; i++) {
-            const btn = document.createElement("button");
-            btn.className = "cell";
-            btn.textContent = board[i] === "_" ? "" : board[i];
-            const notMyTurnYet = mode === "ai" && currentTurn !== "X";
-            const disabled = board[i] !== "_" || status !== "in_progress" || busy || notMyTurnYet;
-            btn.disabled = disabled;
-            btn.addEventListener("click", () => makeMove(i));
-            boardEl.appendChild(btn);
-        }
+        const notMyTurnYet = mode === "ai" && currentTurn !== "X";
+        const cellsClickable = status === "in_progress" && !busy && !notMyTurnYet;
+        TTTBoardRender.renderBoard(boardEl, board, {
+            winningLine: null, // v1's response shape doesn't carry this yet (UI overhaul increment)
+            cellsClickable: cellsClickable,
+            onCellClick: makeMove,
+        });
         renderStatus();
     }
 

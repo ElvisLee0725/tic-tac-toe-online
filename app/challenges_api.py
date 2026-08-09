@@ -2,11 +2,9 @@
 POST/GET/accept/decline/cancel challenge endpoints. (DESIGN_V2.md Section 2.2.)
 PRD_V2 U14/U15/U18, FR-44-49.
 
-Scope note (this increment): only the challenge/invite state machine is
-built here. `live_games` (Section 2.3) doesn't exist yet -- accepting a
-challenge flips its own status to 'accepted' but does NOT yet create a
-playable game. See accept_challenge() below for exactly where that seam
-is left for the next increment.
+accept_challenge() creates the actual live_games row (Section 2.3) once a
+challenge is accepted -- see live_games_api.py for the cross-device game
+itself (polling, moves, disconnect/forfeit).
 """
 
 from datetime import datetime, timedelta, timezone
@@ -207,17 +205,28 @@ async def accept_challenge(challenge_id: int, request: Request):
             {"error": "challenge_not_pending", "status": challenge["status"]}, status_code=409
         )
 
-    # --- SEAM for the next increment (DESIGN_V2.md Section 2.3, live_games) ---
-    # Per the design contract this endpoint should create a live_games row
-    # and return `201 { game_id }`. That table doesn't exist yet in this
-    # increment, so for now this only flips the challenge's own state
-    # machine to 'accepted' and leaves `game_id` NULL/None in both the DB
-    # row and the response. The next increment's job, right here: create
-    # the live_games row (x_profile_id=challenger_id, o_profile_id=
-    # invitee_id per FR-52), `UPDATE challenges SET game_id = ? WHERE id
-    # = ?`, and return the real game_id instead of None.
-    db.execute("UPDATE challenges SET status = 'accepted' WHERE id = ?", (challenge_id,))
-    return JSONResponse({"challenge_id": challenge_id, "status": "accepted", "game_id": None}, status_code=201)
+    # FR-59: can't accept while already in another in-progress live game.
+    already_in_game = db.query_one_dict(
+        "SELECT id FROM live_games WHERE status = 'in_progress' AND (x_profile_id = ? OR o_profile_id = ?)",
+        (profile["id"], profile["id"]),
+    )
+    if already_in_game is not None:
+        return JSONResponse({"error": "already_in_live_game"}, status_code=409)
+
+    # Create the live_games row (FR-52: challenger is X and moves first,
+    # the accepting player is O) and link it back onto the challenge.
+    cur = db.execute(
+        "INSERT INTO live_games (x_profile_id, o_profile_id) VALUES (?, ?)",
+        (challenge["challenger_id"], profile["id"]),
+    )
+    game_id = cur.lastrowid
+    db.execute(
+        "UPDATE challenges SET status = 'accepted', game_id = ? WHERE id = ?",
+        (game_id, challenge_id),
+    )
+    return JSONResponse(
+        {"challenge_id": challenge_id, "status": "accepted", "game_id": game_id}, status_code=201
+    )
 
 
 @router.post("/api/challenges/{challenge_id}/decline")

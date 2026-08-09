@@ -32,6 +32,17 @@ def winner(board: List[str]) -> Optional[str]:
     return None
 
 
+def winning_line(board: List[str]) -> Optional[List[int]]:
+    """Return the [a,b,c] winning line if someone has won, else None.
+    Used by live_games_api.py (DESIGN_V2.md Section 2.3) to feed the
+    frontend's win-highlight; computed once server-side from the same
+    LINES table everything else here uses."""
+    for a, b, c in LINES:
+        if board[a] != EMPTY and board[a] == board[b] == board[c]:
+            return [a, b, c]
+    return None
+
+
 def is_full(board: List[str]) -> bool:
     return EMPTY not in board
 

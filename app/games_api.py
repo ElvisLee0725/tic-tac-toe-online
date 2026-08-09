@@ -158,16 +158,52 @@ async def _create_human_game(request: Request, body: dict):
     return JSONResponse(_game_public_view(g), status_code=201)
 
 
-def _finalize_if_terminal(g: dict) -> Optional[dict]:
-    """If the game just reached a terminal state, write the audit log +
-    increment profile counters for every real participant (skipped
-    entirely for guest games, where x_profile_id is None), and drop the
-    game from active_games. Returns a profile_updates dict or None.
-
-    Handles both mode="ai" (o_profile_id is always None -- the AI has no
-    profile/stats) and mode="human" (o_profile_id is a real profile that
-    must get its own win/loss/tie increment too, per PRD Q8).
+def finalize_game_stats(mode: str, difficulty, x_profile_id: int, o_profile_id, status: str) -> dict:
     """
+    Shared stats-finalization logic: insert the game_results audit row and
+    increment wins/losses/ties for every real participant. Used by both
+    v1's local games (_finalize_if_terminal below) and v2's cross-device
+    live_games (live_games_api.py) on terminal state -- one implementation,
+    per PRD Q8 / DESIGN_V2.md Section 2.3 ("no new stats code, reuse what
+    exists"). x_profile_id must be non-None (guest AI games never call
+    this at all). o_profile_id is None for vs-AI games (the AI has no
+    profile/stats) and a real profile id for any human opponent.
+    """
+    result = {"x_won": "x_won", "o_won": "o_won", "tie": "tie"}[status]
+    db.execute(
+        """INSERT INTO game_results (mode, difficulty, x_profile_id, o_profile_id, result)
+           VALUES (?, ?, ?, ?, ?)""",
+        (mode, difficulty, x_profile_id, o_profile_id, result),
+    )
+
+    def _bump(profile_id: int, column: str):
+        db.execute(f"UPDATE profiles SET {column} = {column} + 1 WHERE id = ?", (profile_id,))
+
+    if status == "tie":
+        _bump(x_profile_id, "ties")
+    elif status == "x_won":
+        _bump(x_profile_id, "wins")
+    else:  # o_won
+        _bump(x_profile_id, "losses")
+
+    profile_updates = {"x": auth.profile_to_dict(auth.get_profile_by_id(x_profile_id))}
+
+    if o_profile_id is not None:
+        if status == "tie":
+            _bump(o_profile_id, "ties")
+        elif status == "o_won":
+            _bump(o_profile_id, "wins")
+        else:  # x_won
+            _bump(o_profile_id, "losses")
+        profile_updates["o"] = auth.profile_to_dict(auth.get_profile_by_id(o_profile_id))
+
+    return profile_updates
+
+
+def _finalize_if_terminal(g: dict) -> Optional[dict]:
+    """If the game just reached a terminal state, finalize stats (skipped
+    entirely for guest games, where x_profile_id is None), and drop the
+    game from active_games. Returns a profile_updates dict or None."""
     status = game_rules.game_status(g["board"])
     g["status"] = status
     if status == "in_progress":
@@ -175,33 +211,9 @@ def _finalize_if_terminal(g: dict) -> Optional[dict]:
 
     profile_updates = None
     if g["x_profile_id"] is not None:
-        result = {"x_won": "x_won", "o_won": "o_won", "tie": "tie"}[status]
-        db.execute(
-            """INSERT INTO game_results (mode, difficulty, x_profile_id, o_profile_id, result)
-               VALUES (?, ?, ?, ?, ?)""",
-            (g["mode"], g["difficulty"], g["x_profile_id"], g["o_profile_id"], result),
+        profile_updates = finalize_game_stats(
+            g["mode"], g["difficulty"], g["x_profile_id"], g["o_profile_id"], status
         )
-
-        def _bump(profile_id: int, column: str):
-            db.execute(f"UPDATE profiles SET {column} = {column} + 1 WHERE id = ?", (profile_id,))
-
-        if status == "tie":
-            _bump(g["x_profile_id"], "ties")
-        elif status == "x_won":
-            _bump(g["x_profile_id"], "wins")
-        else:  # o_won
-            _bump(g["x_profile_id"], "losses")
-
-        profile_updates = {"x": auth.profile_to_dict(auth.get_profile_by_id(g["x_profile_id"]))}
-
-        if g["o_profile_id"] is not None:
-            if status == "tie":
-                _bump(g["o_profile_id"], "ties")
-            elif status == "o_won":
-                _bump(g["o_profile_id"], "wins")
-            else:  # x_won
-                _bump(g["o_profile_id"], "losses")
-            profile_updates["o"] = auth.profile_to_dict(auth.get_profile_by_id(g["o_profile_id"]))
 
     # Note: the finished game is deliberately left in active_games (not
     # popped) so the "already finished" check in make_move() below can

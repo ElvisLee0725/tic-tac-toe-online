@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app import auth, leaderboard_api
+from app import auth, db, leaderboard_api
 
 router = APIRouter()
 
@@ -83,6 +83,41 @@ async def challenges_page(request: Request):
         return RedirectResponse(url="/signin", status_code=302)
     return templates.TemplateResponse(
         request, "challenges.html", {"profile": profile}
+    )
+
+
+@router.get("/play/live/{game_id}")
+async def live_game_page(game_id: int, request: Request):
+    """
+    Cross-device game board (DESIGN_V2.md Section 2.3). live-board.js
+    does the polling; this route's only job is auth + handing the page
+    the identity context (my mark, both display names) that the poll
+    endpoint's response shape deliberately doesn't carry (Section 2.3's
+    response is board/turn/status/winner/winning_line/opponent_state
+    only), so board.js/live-board.js don't need a second identity call.
+    """
+    profile = _current_profile(request)
+    if profile is None:
+        return RedirectResponse(url="/signin", status_code=302)
+
+    game_row = db.query_one_dict("SELECT * FROM live_games WHERE id = ?", (game_id,))
+    if game_row is None or profile["id"] not in (game_row["x_profile_id"], game_row["o_profile_id"]):
+        return RedirectResponse(url="/challenges", status_code=302)
+
+    x_profile = auth.get_profile_by_id(game_row["x_profile_id"])
+    o_profile = auth.get_profile_by_id(game_row["o_profile_id"])
+    my_mark = "X" if profile["id"] == game_row["x_profile_id"] else "O"
+
+    return templates.TemplateResponse(
+        request,
+        "live_game.html",
+        {
+            "profile": profile,
+            "game_id": game_id,
+            "my_mark": my_mark,
+            "x_name": x_profile["display_name"],
+            "o_name": o_profile["display_name"],
+        },
     )
 
 

@@ -68,7 +68,14 @@
                 ? `/api/challenges/${challengeId}`
                 : `/api/challenges/${challengeId}/${action}`;
         try {
-            await fetch(url, { method });
+            const res = await fetch(url, { method: method });
+            if (action === "accept" && res.ok) {
+                const data = await res.json();
+                if (data.game_id) {
+                    window.location.href = `/play/live/${data.game_id}`;
+                    return;
+                }
+            }
         } finally {
             refresh();
         }
