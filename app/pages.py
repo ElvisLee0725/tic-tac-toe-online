@@ -63,3 +63,30 @@ async def leaderboard_page(request: Request):
         "leaderboard.html",
         {"profile": profile, "top": data["top"], "me": data["me"]},
     )
+
+
+@router.get("/forgot-pin")
+async def forgot_pin_page(request: Request):
+    """PIN recovery request form (FR-37, DESIGN_V2.md Section 1)."""
+    profile = _current_profile(request)
+    return templates.TemplateResponse(
+        request, "forgot_pin.html", {"profile": profile}
+    )
+
+
+@router.get("/reset-pin")
+async def reset_pin_page(request: Request):
+    """
+    Landed on via the emailed reset link. Token validity is checked
+    server-side before rendering, per DESIGN_V2.md Section 1.4 -- an
+    invalid/expired/used/missing token shows a plain error instead of the
+    new-PIN form.
+    """
+    profile = _current_profile(request)
+    token = request.query_params.get("token")
+    token_valid = auth.get_valid_pin_reset(token) is not None
+    return templates.TemplateResponse(
+        request,
+        "reset_pin.html",
+        {"profile": profile, "token": token, "token_valid": token_valid},
+    )

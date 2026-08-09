@@ -40,7 +40,10 @@ def _parse_credentials(body: dict):
 @router.post("/api/session/new")
 async def post_session_new(request: Request):
     """Create Account (FR-18). Fails with 409 name_taken if the name is
-    already in use -- never signs the caller into the existing account."""
+    already in use -- never signs the caller into the existing account.
+
+    recovery_email is optional (v2, FR-38/PRD_V2 Q1) -- used solely to
+    enable PIN recovery later; never required to create a profile."""
     try:
         body = await request.json()
     except Exception:
@@ -48,11 +51,12 @@ async def post_session_new(request: Request):
 
     try:
         display_name, pin = _parse_credentials(body)
+        recovery_email = auth.validate_recovery_email(body.get("recovery_email"))
     except auth.ValidationError as e:
         return JSONResponse({"error": "validation_error", "message": str(e)}, status_code=422)
 
     try:
-        profile = auth.create_profile_explicit(display_name, pin)
+        profile = auth.create_profile_explicit(display_name, pin, recovery_email)
     except auth.NameTakenError:
         return JSONResponse(
             {

@@ -61,6 +61,22 @@ SCHEMA_STATEMENTS = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_game_results_x ON game_results(x_profile_id)",
     "CREATE INDEX IF NOT EXISTS idx_game_results_o ON game_results(o_profile_id)",
+    # v2: PIN recovery (DESIGN_V2.md Section 1.3). recovery_email is
+    # nullable -- NULL means "no recovery configured" (FR-42), the normal
+    # state for every pre-v2 profile and anyone who skips the optional
+    # field at signup. Added via a separate ALTER TABLE below (see
+    # _ensure_recovery_email_column) since CREATE TABLE IF NOT EXISTS
+    # can't add a column to an already-existing table.
+    """
+    CREATE TABLE IF NOT EXISTS pin_resets (
+        token       TEXT PRIMARY KEY,
+        profile_id  INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        expires_at  TEXT NOT NULL,
+        used_at     TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_pin_resets_profile ON pin_resets(profile_id)",
 ]
 
 
@@ -94,6 +110,20 @@ def get_conn():
     return _connection
 
 
+def _ensure_recovery_email_column(conn):
+    """
+    ALTER TABLE ADD COLUMN isn't idempotent the way CREATE TABLE/INDEX IF
+    NOT EXISTS are (it errors if the column already exists), so this is
+    guarded explicitly by checking PRAGMA table_info first -- lets init_db
+    stay safe to run on every startup, including against a v1 database
+    that predates this column (v2, DESIGN_V2.md Section 1.3).
+    """
+    cur = conn.execute("PRAGMA table_info(profiles)")
+    columns = {row[1] for row in cur.fetchall()}
+    if "recovery_email" not in columns:
+        conn.execute("ALTER TABLE profiles ADD COLUMN recovery_email TEXT")
+
+
 def init_db(conn=None):
     """Create tables/indexes if they don't already exist. Idempotent."""
     owns_conn = conn is None
@@ -101,6 +131,7 @@ def init_db(conn=None):
         conn = get_connection()
     for stmt in SCHEMA_STATEMENTS:
         conn.execute(stmt)
+    _ensure_recovery_email_column(conn)
     conn.commit()
     return conn if owns_conn else None
 

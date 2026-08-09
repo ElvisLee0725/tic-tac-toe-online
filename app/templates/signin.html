@@ -23,11 +23,12 @@
         <button type="submit">Sign In</button>
         <p id="signin-error" class="error" hidden></p>
     </form>
+    <p class="muted"><a href="/forgot-pin">Forgot your PIN?</a></p>
 </section>
 
 <section id="panel-create" hidden>
     <p class="muted">
-        Pick a new display name and PIN. Remember your PIN -- there's no recovery if you forget it.
+        Pick a new display name and PIN.
     </p>
     <form id="create-form">
         <label for="create_display_name">Display name</label>
@@ -38,6 +39,15 @@
         <label for="create_pin">PIN (4 digits)</label>
         <input type="password" id="create_pin" name="pin" maxlength="4" inputmode="numeric"
                pattern="\d{4}" required placeholder="4 digits">
+
+        <label for="create_recovery_email">Recovery email (optional)</label>
+        <input type="email" id="create_recovery_email" name="recovery_email" maxlength="254"
+               placeholder="you@example.com">
+        <p class="muted small">
+            Optional, but without it there's no way to recover this profile if you forget your PIN --
+            you'd need to create a new one. We only ever use this address to send a PIN reset link;
+            this isn't bank-grade security, just enough to save you from a typo'd PIN.
+        </p>
 
         <button type="submit">Create Account</button>
         <p id="create-error" class="error" hidden></p>

@@ -29,12 +29,18 @@
 
             const display_name = form.querySelector("[name=display_name]").value.trim();
             const pin = form.querySelector("[name=pin]").value.trim();
+            const payload = { display_name, pin };
+            const recoveryEmailField = form.querySelector("[name=recovery_email]");
+            if (recoveryEmailField) {
+                const recovery_email = recoveryEmailField.value.trim();
+                if (recovery_email) payload.recovery_email = recovery_email;
+            }
 
             try {
                 const res = await fetch(path, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ display_name, pin }),
+                    body: JSON.stringify(payload),
                 });
                 const data = await res.json();
                 if (res.ok) {

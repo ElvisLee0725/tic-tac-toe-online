@@ -1,14 +1,16 @@
 # Tic Tac Toe Online
 
-A web-based Tic Tac Toe game: play against an AI opponent or a friend on the
-same device, with lightweight name+PIN profiles and (eventually) a global
-leaderboard. See `docs/PRD.md` for requirements and `docs/DESIGN.md` for the
-full technical design.
+A web-based Tic Tac Toe game: play against an AI opponent (Easy/Medium/Hard)
+or a friend on the same device, with lightweight name+PIN profiles, personal
+stats, a global leaderboard, and self-service PIN recovery via email. See
+`docs/PRD.md`/`docs/DESIGN.md` for the v1 design and `docs/PRD_V2.md`/
+`docs/DESIGN_V2.md` for the v2 additions (PIN recovery, real-time
+cross-device play, UI overhaul).
 
-**Current build status:** this is an in-progress slice of the full design --
-profile creation/sign-in (name + PIN) and a full game against the AI (Easy,
-Medium, or Hard) work end to end. Human-vs-human, the stats page, and the
-leaderboard are designed (see DESIGN.md) but not implemented yet.
+**Current build status:** v1 is fully implemented (AI play, local
+human-vs-human, profiles, stats, leaderboard). Of v2, **PIN recovery** is
+implemented; real-time cross-device play and the UI overhaul are designed
+but not built yet.
 
 ## Install
 
@@ -55,5 +57,29 @@ To point the app at a real Turso database once one exists:
 ```bash
 export TURSO_DATABASE_URL="libsql://<your-db>.turso.io"
 export TURSO_AUTH_TOKEN="<your-token>"
+.venv/bin/uvicorn app.main:app --reload
+```
+
+## PIN recovery email: local fallback vs. Resend
+
+`docs/DESIGN_V2.md` Section 1.5 specifies **Resend** for sending PIN-reset
+emails, configured via `RESEND_API_KEY` (and `PUBLIC_BASE_URL`, used to build
+the reset link). Nobody has set up a Resend account/verified sending domain
+yet -- that's a real prerequisite that happens later, out-of-band.
+
+Same pattern as the Turso fallback above: `app/email.py`'s
+`send_pin_reset_email()` checks `RESEND_API_KEY` at send time:
+
+- **Not set** (the default for local dev): the reset link is logged to the
+  server console/logs instead of actually being emailed -- copy it from the
+  terminal to test the "Forgot your PIN?" flow end to end with no external
+  account.
+- **Set**: the app calls the real Resend API instead.
+
+To send real emails once Resend is set up:
+
+```bash
+export RESEND_API_KEY="re_..."
+export PUBLIC_BASE_URL="https://<your-deployed-host>"
 .venv/bin/uvicorn app.main:app --reload
 ```
