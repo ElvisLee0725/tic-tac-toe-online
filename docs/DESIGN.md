@@ -56,6 +56,8 @@ Two kinds of server-side state, deliberately kept separate:
 
 This implies a hard constraint carried into deployment (Section 8): **the app must run as a single process/worker**. In-memory game state breaks under multiple workers/instances regardless of where the database lives. At hobby traffic levels this is a non-issue, not a compromise.
 
+> **v2 note:** this constraint still holds, but its cause has narrowed. v2 (see `DESIGN_V2.md` Section 2.6) adds a DB-backed cross-device play feature that has no single-process dependency at all; the only remaining reason for the constraint is this section's in-memory `active_games` dict for local/AI games, which v2 deliberately leaves unchanged. This document otherwise still describes v1's shipped architecture as-is.
+
 ---
 
 ## 2. Frontend Approach — Decision: Server-rendered (FastAPI + Jinja2) + vanilla JS, no build step
