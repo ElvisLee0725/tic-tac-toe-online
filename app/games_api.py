@@ -26,13 +26,16 @@ active_games = {}
 
 
 def _game_public_view(g: dict) -> dict:
+    status = g["status"]
+    winner_mark = {"x_won": "X", "o_won": "O"}.get(status)
     return {
         "game_id": g["game_id"],
         "mode": g["mode"],
         "difficulty": g["difficulty"],
         "board": "".join(g["board"]),
         "current_turn": g["current_turn"],
-        "status": g["status"],
+        "status": status,
+        "winning_line": game_rules.winning_line(g["board"]) if winner_mark else None,
         "x": {"display_name": g["x_display_name"]},
         "o": {"display_name": g["o_display_name"]},
     }
@@ -264,6 +267,10 @@ async def make_move(game_id: str, request: Request):
 
     status = g["status"]
     winner_mark = {"x_won": "X", "o_won": "O"}.get(status)
+    # FR-62 (DESIGN_V2.md Section 3.3): highlight the winning line client-
+    # side using server-computed data, same game.py function live_games_api
+    # already uses -- not re-derived in JS.
+    winning_line = game_rules.winning_line(g["board"]) if winner_mark else None
 
     resp = {
         "game_id": game_id,
@@ -271,6 +278,7 @@ async def make_move(game_id: str, request: Request):
         "current_turn": g["current_turn"],
         "status": status,
         "winner": winner_mark,
+        "winning_line": winning_line,
         "ai_move": ai_move_info,
     }
     if profile_updates is not None:

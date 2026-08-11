@@ -11,16 +11,16 @@
 {% endif %}
 
 <h2>vs AI</h2>
-<div class="mode-cards">
-    <a class="mode-card" href="/game?mode=ai&difficulty=easy{% if not profile %}&guest=true{% endif %}">
+<div class="card-grid">
+    <a class="card card-link" href="/game?mode=ai&difficulty=easy{% if not profile %}&guest=true{% endif %}">
         <h3>Easy</h3>
         <p>Casual, mostly random moves. Good for a relaxed game.</p>
     </a>
-    <a class="mode-card" href="/game?mode=ai&difficulty=medium{% if not profile %}&guest=true{% endif %}">
+    <a class="card card-link" href="/game?mode=ai&difficulty=medium{% if not profile %}&guest=true{% endif %}">
         <h3>Medium</h3>
         <p>Takes obvious wins/blocks, otherwise plays randomly. Beatable.</p>
     </a>
-    <a class="mode-card" href="/game?mode=ai&difficulty=hard{% if not profile %}&guest=true{% endif %}">
+    <a class="card card-link" href="/game?mode=ai&difficulty=hard{% if not profile %}&guest=true{% endif %}">
         <h3>Hard</h3>
         <p>Unbeatable. Best you can do is tie.</p>
     </a>
@@ -30,17 +30,21 @@
 {% if profile %}
 <p class="muted">Both players take turns on this device. You'll play X; your opponent must already have their own account -- enter their name + PIN below to sign them in for O.</p>
 <form id="human-form">
-    <label for="opponent_name">Opponent's display name</label>
-    <input type="text" id="opponent_name" name="opponent_name" maxlength="20"
-           pattern="[A-Za-z0-9_-]{3,20}" required
-           placeholder="3-20 letters/numbers/_/-">
+    <div class="field">
+        <label for="opponent_name">Opponent's display name</label>
+        <input type="text" id="opponent_name" name="opponent_name" maxlength="20"
+               pattern="[A-Za-z0-9_-]{3,20}" required
+               placeholder="3-20 letters/numbers/_/-">
+    </div>
 
-    <label for="opponent_pin">Opponent's PIN (4 digits)</label>
-    <input type="password" id="opponent_pin" name="opponent_pin" maxlength="4" inputmode="numeric"
-           pattern="\d{4}" required placeholder="4 digits">
+    <div class="field">
+        <label for="opponent_pin">Opponent's PIN (4 digits)</label>
+        <input type="password" id="opponent_pin" name="opponent_pin" maxlength="4" inputmode="numeric"
+               pattern="\d{4}" required placeholder="4 digits">
+    </div>
 
-    <button type="submit">Start local game</button>
-    <p id="human-error" class="error" hidden></p>
+    <button type="submit" class="btn">Start local game</button>
+    <p id="human-error" class="field-error" hidden></p>
 </form>
 <script src="/static/js/human_start.js"></script>
 {% else %}

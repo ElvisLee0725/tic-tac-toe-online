@@ -32,32 +32,39 @@
     }
 
     function renderStatus() {
-        statusEl.textContent = "";
-        let text = "";
+        let state, text, mark;
+
         if (status === "in_progress") {
+            state = "turn";
+            mark = currentTurn;
             text = currentTurn === cfg.myMark ? "Your move" : `Waiting for ${opponentName()}...`;
             if (opponentState === "stale") {
                 text += ` (${opponentName()} seems to have gone quiet...)`;
             }
         } else if (status === "x_won" || status === "o_won") {
             const winnerMark = status === "x_won" ? "X" : "O";
+            mark = winnerMark;
+            state = winnerMark === cfg.myMark ? "win" : "loss";
             text = winnerMark === cfg.myMark ? "You win!" : `${opponentName()} wins.`;
         } else if (status === "tie") {
+            state = "tie";
             text = "It's a tie.";
         } else if (status === "forfeited_x" || status === "forfeited_o") {
             const forfeitingMark = status === "forfeited_x" ? "X" : "O";
-            text =
-                forfeitingMark === cfg.myMark
-                    ? `You were inactive too long -- ${opponentName()} wins by forfeit.`
-                    : `${opponentName()} was inactive too long -- you win by forfeit.`;
+            const iWon = forfeitingMark !== cfg.myMark;
+            state = iWon ? "win" : "loss";
+            text = iWon
+                ? `${opponentName()} was inactive too long -- you win by forfeit.`
+                : `You were inactive too long -- ${opponentName()} wins by forfeit.`;
         }
-        statusEl.textContent = text;
+
+        TTTBoardRender.renderStatusBanner(statusEl, state, text, mark);
 
         if (status !== "in_progress") {
             stopPolling();
             const link = document.createElement("a");
             link.href = "/challenges";
-            link.textContent = " Back to Challenges";
+            link.textContent = "Back to Challenges";
             statusEl.appendChild(link);
         }
     }

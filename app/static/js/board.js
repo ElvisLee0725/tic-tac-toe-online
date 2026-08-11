@@ -23,6 +23,7 @@
     let board = "_________";
     let currentTurn = "X";
     let status = "in_progress";
+    let winningLine = null;
     let xName = "X";
     let oName = "O";
     let busy = false;
@@ -32,6 +33,7 @@
         board = data.board;
         currentTurn = data.current_turn;
         status = data.status;
+        winningLine = data.winning_line || null;
         if (data.x) xName = data.x.display_name;
         if (data.o) oName = data.o.display_name;
     }
@@ -40,7 +42,7 @@
         const notMyTurnYet = mode === "ai" && currentTurn !== "X";
         const cellsClickable = status === "in_progress" && !busy && !notMyTurnYet;
         TTTBoardRender.renderBoard(boardEl, board, {
-            winningLine: null, // v1's response shape doesn't carry this yet (UI overhaul increment)
+            winningLine: winningLine,
             cellsClickable: cellsClickable,
             onCellClick: makeMove,
         });
@@ -48,33 +50,38 @@
     }
 
     function renderStatus() {
-        statusEl.textContent = "";
-        if (mode === "human") {
-            if (status === "in_progress") {
+        let state, text, mark;
+
+        if (status === "in_progress") {
+            state = "turn";
+            mark = currentTurn;
+            if (mode === "human") {
                 const name = currentTurn === "X" ? xName : oName;
-                statusEl.textContent = `${name}'s turn (${currentTurn})`;
-            } else if (status === "x_won") {
-                statusEl.textContent = `${xName} (X) wins!`;
-            } else if (status === "o_won") {
-                statusEl.textContent = `${oName} (O) wins!`;
-            } else if (status === "tie") {
-                statusEl.textContent = "It's a tie.";
+                text = `${name}'s turn (${currentTurn})`;
+            } else {
+                text = currentTurn === "X" ? "Your move (X)" : "AI is thinking...";
             }
-        } else {
-            if (status === "in_progress") {
-                statusEl.textContent = currentTurn === "X" ? "Your move (X)" : "AI is thinking...";
-            } else if (status === "x_won") {
-                statusEl.textContent = "You win!";
-            } else if (status === "o_won") {
-                statusEl.textContent = "AI wins.";
-            } else if (status === "tie") {
-                statusEl.textContent = "It's a tie.";
+        } else if (status === "x_won" || status === "o_won") {
+            const winnerMark = status === "x_won" ? "X" : "O";
+            mark = winnerMark;
+            if (mode === "human") {
+                state = "win"; // shown as an outcome banner either way -- both players share one screen
+                text = `${winnerMark === "X" ? xName : oName} (${winnerMark}) wins!`;
+            } else {
+                state = winnerMark === "X" ? "win" : "loss";
+                text = winnerMark === "X" ? "You win!" : "AI wins.";
             }
+        } else if (status === "tie") {
+            state = "tie";
+            text = "It's a tie.";
         }
+
+        TTTBoardRender.renderStatusBanner(statusEl, state, text, mark);
+
         if (status !== "in_progress") {
             const again = document.createElement("a");
             again.href = mode === "human" ? "/" : window.location.pathname + window.location.search;
-            again.textContent = mode === "human" ? " Back to home to start another game" : " New game";
+            again.textContent = mode === "human" ? "Back to home to start another game" : "New game";
             statusEl.appendChild(again);
         }
     }
@@ -130,6 +137,7 @@
             board = data.board;
             currentTurn = data.current_turn;
             status = data.status;
+            winningLine = data.winning_line || null;
         } finally {
             busy = false;
             render();

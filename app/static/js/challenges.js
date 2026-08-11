@@ -56,7 +56,7 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = text;
-        btn.className = "nav-btn-link challenge-action";
+        btn.className = "btn btn-secondary btn-sm list-action";
         btn.addEventListener("click", onClick);
         return btn;
     }

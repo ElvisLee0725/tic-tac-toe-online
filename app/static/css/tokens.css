@@ -1,0 +1,97 @@
+/*
+ * Design tokens (DESIGN_V2.md Section 3.1). CSS custom properties only --
+ * no selectors/components here, just the palette/type/spacing/radius
+ * scale every page and component pulls from, so FR-61's "one consistent
+ * visual system" is a matter of reusing these variables everywhere
+ * rather than hand-tuning each page.
+ */
+:root {
+    color-scheme: light dark;
+
+    /* --- Color palette --- */
+    --color-bg: #ffffff;
+    --color-bg-subtle: #f4f5f7;
+    --color-surface: #ffffff;
+    --color-fg: #1a1a1a;
+    --color-muted: #5f6368;
+    --color-border: #d7dbe0;
+
+    --color-accent: #2563eb;
+    --color-accent-fg: #ffffff;
+    --color-accent-hover: #1d4ed8;
+
+    --color-x: #2563eb;
+    --color-o: #dc2626;
+
+    --color-win: #15803d;
+    --color-win-bg: #e7f7ec;
+    --color-loss: #b91c1c;
+    --color-loss-bg: #fdecec;
+    --color-tie: #52525b;
+    --color-tie-bg: #eef0f2;
+
+    --color-error: #c0392b;
+    --color-error-bg: #fdecec;
+    --color-error-border: #e6b3ac;
+
+    /* Back-compat aliases -- the original app.css used these names
+       directly; kept so nothing that still references them breaks
+       during this migration. New CSS should use the tokens above. */
+    --fg: var(--color-fg);
+    --bg: var(--color-bg);
+    --accent: var(--color-accent);
+    --border: var(--color-border);
+    --muted: var(--color-muted);
+    --error: var(--color-error);
+
+    /* --- Type scale --- */
+    --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.75rem;
+    --text-2xl: 2.5rem;
+
+    /* --- Spacing scale --- */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+    --space-8: 3rem;
+
+    /* --- Radii --- */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-pill: 999px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-bg: #121212;
+        --color-bg-subtle: #1c1e22;
+        --color-surface: #1a1c20;
+        --color-fg: #eaeaea;
+        --color-muted: #9aa0a6;
+        --color-border: #3a3d42;
+
+        --color-accent-hover: #3b82f6;
+
+        --color-x: #60a5fa;
+        --color-o: #f87171;
+
+        --color-win: #4ade80;
+        --color-win-bg: #103319;
+        --color-loss: #f87171;
+        --color-loss-bg: #34161a;
+        --color-tie: #b3b8bf;
+        --color-tie-bg: #24262a;
+
+        --color-error: #f87171;
+        --color-error-bg: #34161a;
+        --color-error-border: #5c2a2a;
+    }
+}

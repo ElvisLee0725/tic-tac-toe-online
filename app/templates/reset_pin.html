@@ -7,12 +7,14 @@
 <p class="muted">Choose a new 4-digit PIN for your profile. Signing in anywhere else with the old PIN will stop working once this is set.</p>
 <form id="reset-pin-form">
     <input type="hidden" id="reset_token" value="{{ token }}">
-    <label for="new_pin">New PIN (4 digits)</label>
-    <input type="password" id="new_pin" name="new_pin" maxlength="4" inputmode="numeric"
-           pattern="\d{4}" required placeholder="4 digits">
+    <div class="field">
+        <label for="new_pin">New PIN (4 digits)</label>
+        <input type="password" id="new_pin" name="new_pin" maxlength="4" inputmode="numeric"
+               pattern="\d{4}" required placeholder="4 digits">
+    </div>
 
-    <button type="submit">Set new PIN</button>
-    <p id="reset-pin-error" class="error" hidden></p>
+    <button type="submit" class="btn">Set new PIN</button>
+    <p id="reset-pin-error" class="field-error" hidden></p>
 </form>
 <script src="/static/js/reset_pin.js"></script>
 {% else %}
