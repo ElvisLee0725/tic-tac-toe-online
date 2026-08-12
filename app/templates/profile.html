@@ -4,6 +4,7 @@
 <h1>My Stats</h1>
 <p>Signed in as <strong>{{ profile.display_name }}</strong></p>
 
+<div class="table-wrap">
 <table class="table">
     <tbody>
         <tr><th>Wins</th><td>{{ profile.wins }}</td></tr>
@@ -11,6 +12,7 @@
         <tr><th>Ties</th><td>{{ profile.ties }}</td></tr>
     </tbody>
 </table>
+</div>
 
 <p><a href="/leaderboard">View leaderboard</a></p>
 {% endblock %}

@@ -7,13 +7,17 @@
     if (!form) return;
     const errorEl = document.getElementById("reset-pin-error");
     const token = document.getElementById("reset_token").value;
+    const newPinField = document.getElementById("new_pin");
+    const submitBtn = form.querySelector("button[type=submit]");
 
     form.addEventListener("submit", async function (evt) {
         evt.preventDefault();
         errorEl.hidden = true;
+        newPinField.classList.remove("is-invalid");
 
-        const new_pin = document.getElementById("new_pin").value.trim();
+        const new_pin = newPinField.value.trim();
 
+        TTTLoading.start(submitBtn);
         try {
             const res = await fetch("/api/pin-recovery/reset", {
                 method: "POST",
@@ -27,9 +31,14 @@
             }
             errorEl.textContent = describeError(data);
             errorEl.hidden = false;
+            if (data.error === "validation_error") {
+                newPinField.classList.add("is-invalid");
+            }
         } catch (err) {
             errorEl.textContent = "Something went wrong. Please try again.";
             errorEl.hidden = false;
+        } finally {
+            TTTLoading.stop(submitBtn);
         }
     });
 

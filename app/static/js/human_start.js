@@ -10,14 +10,29 @@
     const form = document.getElementById("human-form");
     if (!form) return;
     const errorEl = document.getElementById("human-error");
+    const submitBtn = form.querySelector("button[type=submit]");
+
+    function clearFieldErrors() {
+        form.querySelectorAll(".is-invalid").forEach(function (el) {
+            el.classList.remove("is-invalid");
+        });
+    }
+    function markFieldsInvalid(names) {
+        names.forEach(function (name) {
+            const el = document.getElementById(name);
+            if (el) el.classList.add("is-invalid");
+        });
+    }
 
     form.addEventListener("submit", async function (evt) {
         evt.preventDefault();
         errorEl.hidden = true;
+        clearFieldErrors();
 
         const opponent_name = document.getElementById("opponent_name").value.trim();
         const opponent_pin = document.getElementById("opponent_pin").value.trim();
 
+        TTTLoading.start(submitBtn);
         try {
             const res = await fetch("/api/games", {
                 method: "POST",
@@ -32,9 +47,12 @@
             }
             errorEl.textContent = describeError(data);
             errorEl.hidden = false;
+            markFieldsInvalid(fieldsForError(data));
         } catch (err) {
             errorEl.textContent = "Something went wrong. Please try again.";
             errorEl.hidden = false;
+        } finally {
+            TTTLoading.stop(submitBtn);
         }
     });
 
@@ -52,5 +70,12 @@
             return "You need to be signed in to start a local game.";
         }
         return data.message || "Could not start the game.";
+    }
+
+    function fieldsForError(data) {
+        if (data.error === "opponent_signin_failed") return ["opponent_name", "opponent_pin"];
+        if (data.error === "cannot_play_self") return ["opponent_name"];
+        if (data.error === "validation_error") return ["opponent_name", "opponent_pin"];
+        return [];
     }
 })();

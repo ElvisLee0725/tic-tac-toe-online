@@ -43,10 +43,10 @@
             li.appendChild(label);
 
             if (kind === "incoming") {
-                li.appendChild(makeActionButton("Accept", () => respond(item.challenge_id, "accept")));
-                li.appendChild(makeActionButton("Decline", () => respond(item.challenge_id, "decline")));
+                li.appendChild(makeActionButton("Accept", (btn) => respond(item.challenge_id, "accept", btn)));
+                li.appendChild(makeActionButton("Decline", (btn) => respond(item.challenge_id, "decline", btn)));
             } else {
-                li.appendChild(makeActionButton("Cancel", () => respond(item.challenge_id, "cancel")));
+                li.appendChild(makeActionButton("Cancel", (btn) => respond(item.challenge_id, "cancel", btn)));
             }
             el.appendChild(li);
         }
@@ -57,16 +57,19 @@
         btn.type = "button";
         btn.textContent = text;
         btn.className = "btn btn-secondary btn-sm list-action";
-        btn.addEventListener("click", onClick);
+        btn.addEventListener("click", function () {
+            onClick(btn);
+        });
         return btn;
     }
 
-    async function respond(challengeId, action) {
+    async function respond(challengeId, action, triggerEl) {
         const method = action === "cancel" ? "DELETE" : "POST";
         const url =
             action === "cancel"
                 ? `/api/challenges/${challengeId}`
                 : `/api/challenges/${challengeId}/${action}`;
+        TTTLoading.start(triggerEl);
         try {
             const res = await fetch(url, { method: method });
             if (action === "accept" && res.ok) {
@@ -77,6 +80,9 @@
                 }
             }
         } finally {
+            // refresh() rebuilds this list's DOM from scratch, so the
+            // is-loading class doesn't need explicit removal here -- the
+            // element itself is replaced by the time the response lands.
             refresh();
         }
     }
@@ -98,10 +104,15 @@
     }
 
     if (sendForm) {
+        const sendBtn = sendForm.querySelector("button[type=submit]");
+        const inviteeField = document.getElementById("invitee_name");
+
         sendForm.addEventListener("submit", async function (evt) {
             evt.preventDefault();
             sendError.hidden = true;
-            const invitee_name = document.getElementById("invitee_name").value.trim();
+            inviteeField.classList.remove("is-invalid");
+            const invitee_name = inviteeField.value.trim();
+            TTTLoading.start(sendBtn);
             try {
                 const res = await fetch("/api/challenges", {
                     method: "POST",
@@ -112,13 +123,16 @@
                 if (!res.ok) {
                     sendError.textContent = data.message || "Could not send challenge.";
                     sendError.hidden = false;
+                    inviteeField.classList.add("is-invalid");
                     return;
                 }
-                document.getElementById("invitee_name").value = "";
+                inviteeField.value = "";
                 refresh();
             } catch (err) {
                 sendError.textContent = "Something went wrong. Please try again.";
                 sendError.hidden = false;
+            } finally {
+                TTTLoading.stop(sendBtn);
             }
         });
     }

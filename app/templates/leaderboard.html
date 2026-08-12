@@ -5,14 +5,15 @@
 <p class="muted">Top 10 by score (wins - losses), minimum 5 completed games to qualify.</p>
 
 {% if top %}
+<div class="table-wrap">
 <table class="table">
     <thead>
         <tr>
-            <th>Rank</th>
+            <th><abbr title="Rank">#</abbr></th>
             <th>Player</th>
-            <th>Wins</th>
-            <th>Losses</th>
-            <th>Ties</th>
+            <th><abbr title="Wins">W</abbr></th>
+            <th><abbr title="Losses">L</abbr></th>
+            <th><abbr title="Ties">T</abbr></th>
             <th>Score</th>
         </tr>
     </thead>
@@ -29,6 +30,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% else %}
 <p>No players have qualified for the leaderboard yet (need at least 5 completed games).</p>
 {% endif %}

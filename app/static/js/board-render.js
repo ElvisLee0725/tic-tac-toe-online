@@ -6,7 +6,12 @@
 // highlight, turn/outcome banner) lives in exactly one place.
 window.TTTBoardRender = (function () {
     function renderBoard(boardEl, boardStr, opts) {
-        // opts: { winningLine: [a,b,c]|null, cellsClickable: bool, onCellClick: fn(i) }
+        // opts: { winningLine: [a,b,c]|null, cellsClickable: bool,
+        //         onCellClick: fn(i), loadingCell: i|null }
+        // loadingCell (FR-66): the cell whose move is currently in-flight --
+        // since the whole board is rebuilt on every render(), the
+        // .is-loading spinner is applied here rather than via the shared
+        // TTTLoading helper (which assumes the element survives the fetch).
         opts = opts || {};
         const winSet = new Set(opts.winningLine || []);
         boardEl.innerHTML = "";
@@ -14,6 +19,7 @@ window.TTTBoardRender = (function () {
             const btn = document.createElement("button");
             btn.className = "cell";
             if (winSet.has(i)) btn.classList.add("cell-win");
+            if (i === opts.loadingCell) btn.classList.add("is-loading");
             btn.textContent = boardStr[i] === "_" ? "" : boardStr[i];
             const filled = boardStr[i] !== "_";
             btn.disabled = filled || !opts.cellsClickable;

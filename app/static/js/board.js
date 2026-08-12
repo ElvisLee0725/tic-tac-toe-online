@@ -27,6 +27,7 @@
     let xName = "X";
     let oName = "O";
     let busy = false;
+    let loadingCell = null;
 
     function applyGameState(data) {
         gameId = data.game_id;
@@ -45,6 +46,7 @@
             winningLine: winningLine,
             cellsClickable: cellsClickable,
             onCellClick: makeMove,
+            loadingCell: loadingCell,
         });
         renderStatus();
     }
@@ -120,6 +122,7 @@
     async function makeMove(cell) {
         if (busy || status !== "in_progress" || board[cell] !== "_") return;
         busy = true;
+        loadingCell = cell;
         render();
         try {
             const res = await fetch(`/api/games/${gameId}/moves`, {
@@ -130,8 +133,6 @@
             const data = await res.json();
             if (!res.ok) {
                 statusEl.textContent = "Move rejected: " + (data.message || data.error);
-                busy = false;
-                render();
                 return;
             }
             board = data.board;
@@ -140,6 +141,7 @@
             winningLine = data.winning_line || null;
         } finally {
             busy = false;
+            loadingCell = null;
             render();
         }
     }

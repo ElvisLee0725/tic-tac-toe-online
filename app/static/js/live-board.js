@@ -15,6 +15,7 @@
     let winningLine = null;
     let opponentState = "connected";
     let busy = false;
+    let loadingCell = null;
     let pollTimer = null;
 
     function opponentName() {
@@ -27,6 +28,7 @@
             winningLine: winningLine,
             cellsClickable: cellsClickable,
             onCellClick: makeMove,
+            loadingCell: loadingCell,
         });
         renderStatus();
     }
@@ -93,6 +95,7 @@
     async function makeMove(cell) {
         if (busy || status !== "in_progress" || currentTurn !== cfg.myMark || board[cell] !== "_") return;
         busy = true;
+        loadingCell = cell;
         render();
         try {
             const res = await fetch(`/api/live-games/${cfg.gameId}/moves`, {
@@ -106,6 +109,7 @@
             }
         } finally {
             busy = false;
+            loadingCell = null;
             render();
         }
     }
