@@ -2,7 +2,8 @@
 AI move selection. (DESIGN.md Section 6.)
 
 Easy, Medium, and Hard (minimax) are all implemented and dispatched via
-select_move(). Human-vs-human is still not implemented (separate slice).
+select_move(). Human-vs-human (local and cross-device) doesn't use this
+module at all -- see games_api.py and live_games_api.py.
 """
 
 import random
