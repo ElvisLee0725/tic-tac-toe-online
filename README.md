@@ -7,10 +7,14 @@ stats, a global leaderboard, and self-service PIN recovery via email. See
 `docs/DESIGN_V2.md` for the v2 additions (PIN recovery, real-time
 cross-device play, UI overhaul).
 
-**Current build status:** v1 is fully implemented (AI play, local
-human-vs-human, profiles, stats, leaderboard). Of v2, **PIN recovery** is
-implemented; real-time cross-device play and the UI overhaul are designed
-but not built yet.
+**Live:** https://tic-tac-toe-online-jlxa.onrender.com/ (free tier -- may
+take up to ~60s to wake up if nobody's visited in the last 15 minutes).
+
+**Current build status:** v1 and v2 are both fully implemented and deployed
+-- AI play (Easy/Medium/Hard), local and real-time cross-device
+human-vs-human, profiles with PIN recovery, stats, a leaderboard, and a
+full visual/responsive UI pass. See `docs/PRD.md`/`docs/PRD_V2.md` for the
+complete story list.
 
 ## Install
 
@@ -31,11 +35,11 @@ Then open http://127.0.0.1:8000/ in a browser.
 
 `docs/DESIGN.md` specifies a managed **Turso** (libSQL) database for durable
 data (profiles, sessions, game history), reached via two environment
-variables: `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. Nobody has created
-the actual Turso account/database yet -- that happens later, at deploy time.
+variables: `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. The real Turso
+database is set up and is what the live deployment above actually uses.
 
-So that the app is runnable locally (and by QA) without any external
-account, `app/db.py` falls back to a **local libSQL/SQLite file**
+So that the app is also runnable purely locally (and by QA) without needing
+those credentials, `app/db.py` falls back to a **local libSQL/SQLite file**
 (`local.db`, created in the project root) whenever `TURSO_DATABASE_URL` is
 not set in the environment:
 
